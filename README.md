@@ -23,7 +23,7 @@ func main() {
 		Header("some key", "some value").
 		ContentType(hc.ContentTypeJson).
 		Body(person).
-		Do(func(response *http.Response, body []byte, err error) {
+		Do(func(response *http.Response, err error) {
 		// do something with response
 	})
 }
@@ -37,8 +37,8 @@ client := hc.New().
     Header("some key", "some value").
     ContentType(hc.ContentTypeJson).
     Body(person)
-resp, body, err := client.Go()
+resp, err := client.Go()
 ...
 ```
 
-you can review at test cases to see more exapmples
+you can review at test cases to see more examples.

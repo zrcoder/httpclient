@@ -20,7 +20,7 @@ func (c *Client) InsecureSkipVerify(skip bool) *Client {
 func (c *Client) AddCAFile(cafile string) *Client {
 	content, err := ioutil.ReadFile(cafile)
 	if err != nil {
-		c.keepOrigionErr(err)
+		c.keepOriginErr(err)
 		return c
 	}
 	return c.AddCAContent(content)
@@ -47,12 +47,12 @@ func (c *Client) CertPool(pool *x509.CertPool) *Client {
 func (c *Client) AddCertFile(cert, key string) *Client {
 	certCotent, err := ioutil.ReadFile(cert)
 	if err != nil {
-		c.keepOrigionErr(err)
+		c.keepOriginErr(err)
 		return c
 	}
 	keyContent, err := ioutil.ReadFile(key)
 	if err != nil {
-		c.keepOrigionErr(err)
+		c.keepOriginErr(err)
 		return c
 	}
 	return c.AddCertContent(certCotent, keyContent)
@@ -61,7 +61,7 @@ func (c *Client) AddCertFile(cert, key string) *Client {
 func (c *Client) AddCertContent(certContent, keyContent []byte) *Client {
 	cert, err := tls.X509KeyPair(certContent, keyContent)
 	if err != nil {
-		c.keepOrigionErr(err)
+		c.keepOriginErr(err)
 		return c
 	}
 	return c.AddCert(cert)

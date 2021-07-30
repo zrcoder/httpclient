@@ -49,13 +49,17 @@ func TestGet(t *testing.T) {
 		}))
 		defer server.Close()
 
-		callback := func(response *http.Response, body []byte, err error) {
+		callback := func(response *http.Response, err error) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() {
+				_ = response.Body.Close()
+			}()
 			if response.StatusCode != c.respStatus {
 				t.Error("response status is not", c.respStatus)
 			}
+			body, _ := ioutil.ReadAll(response.Body)
 			if string(body) != c.respBody {
 				t.Errorf("response body should be %s, got %s", c.respBody, string(body))
 			}
@@ -127,8 +131,8 @@ func TestPost(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, _, _ = New().Post(server.URL + "/").GoStr()
-	_, _, _ = New().Post(server.URL+headerUrl).Header(headerKey, headerValue).GoStr()
+	_, _ = New().Post(server.URL + "/").Go()
+	_, _ = New().Post(server.URL+headerUrl).Header(headerKey, headerValue).Go()
 
 	cat := Pet{
 		Name:  "Miumiu",
@@ -143,11 +147,15 @@ func TestPost(t *testing.T) {
 	New().Post(server.URL + jsonUrl).
 		ContentType(ContentTypeJson).
 		Body(joe).
-		Do(func(resp *http.Response, body []byte, err error) {
+		Do(func(resp *http.Response, err error) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 			p := Person{}
+			body, _ := ioutil.ReadAll(resp.Body)
 			err = json.Unmarshal(body, &p)
 			if err != nil {
 				t.Error("response is not a person struct!")
@@ -159,22 +167,30 @@ func TestPost(t *testing.T) {
 
 	New().Post(server.URL + mapUrl).
 		Body(map[string]string{mapKey: mapValue}).
-		DoStr(func(response *http.Response, body string, err error) {
+		Do(func(response *http.Response, err error) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if mapStr != body {
+			defer func() {
+				_ = response.Body.Close()
+			}()
+			body, _ := ioutil.ReadAll(response.Body)
+			if mapStr != string(body) {
 				t.Error("inputed map is not the one of response string")
 			}
 		})
 
 	New().Post(server.URL + arrayUrl).
 		Body(arrayBody).
-		Do(func(response *http.Response, body []byte, err error) {
+		Do(func(response *http.Response, err error) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() {
+				_ = response.Body.Close()
+			}()
 			var array []int
+			body, _ := ioutil.ReadAll(response.Body)
 			err = json.Unmarshal(body, &array)
 			if err != nil {
 				t.Error(err)
@@ -190,19 +206,28 @@ func TestPost(t *testing.T) {
 			}
 		})
 
-	New().Post(server.URL + textUrl).Body(textData).DoStr(func(response *http.Response, body string, err error) {
+	New().Post(server.URL + textUrl).Body(textData).Do(func(response *http.Response, err error) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if body != textData {
+		defer func() {
+			_ = response.Body.Close()
+		}()
+		body, _ := ioutil.ReadAll(response.Body)
+		if string(body) != textData {
 			t.Errorf("expect text respons: %s, got: %s", textData, body)
 		}
 	})
 
-	New().Post(server.URL + intUrl).Body(intBody).DoStr(func(response *http.Response, body string, err error) {
+	New().Post(server.URL + intUrl).Body(intBody).Do(func(response *http.Response, err error) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer func() {
+			_ = response.Body.Close()
+		}()
+
+		body, _ := ioutil.ReadAll(response.Body)
 		t.Log("body is a number, response is:", body)
 	})
 }

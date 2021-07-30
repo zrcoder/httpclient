@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -39,7 +38,7 @@ const (
 )
 
 type CallBackStr func(response *http.Response, body string, err error)
-type CallBack func(response *http.Response, body []byte, err error)
+type CallBack func(response *http.Response, err error)
 
 type Client struct {
 	url              string
@@ -65,7 +64,11 @@ func (c *Client) DebugString() string {
 }
 
 func (c *Client) getFullUrl() string {
-	u, _ := url.Parse(c.url)
+	u, err := url.Parse(c.url)
+	if err != nil {
+		c.keepOriginErr(err)
+		return err.Error()
+	}
 	query := u.Query()
 	for k, v := range c.queries {
 		query.Add(k, v)
@@ -160,7 +163,7 @@ func (c *Client) ContentType(contentType string) *Client {
 
 func (c *Client) Header(k, v string) *Client {
 	if k == "" || v == "" {
-		c.keepOrigionErr(errors.New("invalid header, key or value is empty"))
+		c.keepOriginErr(errors.New("invalid header, key or value is empty"))
 	} else {
 		c.header[k] = v
 	}
@@ -177,7 +180,7 @@ func (c *Client) Body(body interface{}) *Client {
 		c.body = value
 	default:
 		c.body, err = json.Marshal(body)
-		c.keepOrigionErr(err)
+		c.keepOriginErr(err)
 	}
 	return c
 }
@@ -212,7 +215,7 @@ func (c *Client) ExpectContinueTimeout(timeout time.Duration) *Client {
 	return c
 }
 
-func (c *Client) keepOrigionErr(err error) {
+func (c *Client) keepOriginErr(err error) {
 	if c.err == nil {
 		c.err = err
 	}
@@ -222,61 +225,23 @@ func (c *Client) Do(callback CallBack) {
 	if callback == nil {
 		return
 	}
-	resp, body, err := c.Go()
-	callback(resp, body, err)
+	callback(c.Go())
 }
 
-func (c *Client) DoStr(callback CallBackStr) {
-	if callback == nil {
-		return
-	}
-	resp, body, err := c.GoStr()
-	callback(resp, body, err)
-}
-
-func (c *Client) Go() (*http.Response, []byte, error) {
+func (c *Client) Go() (*http.Response, error) {
 	if c.err != nil {
-		return nil, nil, c.err
+		return nil, c.err
 	}
 
-	resp, body, err := c.getResponseBytes()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return resp, body, nil
-}
-
-func (c *Client) GoStr() (*http.Response, string, error) {
-	resp, body, err := c.Go()
-	if err != nil {
-		return nil, "", err
-	}
-
-	return resp, string(body), nil
-}
-
-func (c *Client) getResponseBytes() (*http.Response, []byte, error) {
 	req, err := c.makeRequest()
 	if err != nil {
-		return nil, nil, fmt.Errorf("make request failed:%q", err)
+		return nil, fmt.Errorf("make request failed:%q", err)
 	}
 	for k, v := range c.queries {
 		req.URL.Query().Add(k, v)
 	}
-
 	client := c.makeClient()
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, nil, fmt.Errorf("request failed:%q", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	return resp, body, nil
+	return client.Do(req)
 }
 
 func (c *Client) makeRequest() (*http.Request, error) {

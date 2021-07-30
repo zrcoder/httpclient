@@ -104,20 +104,30 @@ func Example() {
 }
 
 func addPerson(url string, p Person) {
-	New().Put(url).Body(p).Do(func(response *http.Response, body []byte, err error) {
+	New().Put(url).Body(p).Do(func(response *http.Response, err error) {
 		if err != nil {
 			fmt.Println("add a person failed:", err)
 			return
 		}
+		defer func() {
+			_ = response.Body.Close()
+		}()
 	})
 }
 func queryPersons(url string) {
-	New().Get(url).Do(func(response *http.Response, body []byte, err error) {
-		if response.StatusCode != http.StatusOK || err != nil {
-			fmt.Println("query persons failed, status code:", response.StatusCode, "error:", err)
+	New().Get(url).Do(func(response *http.Response, err error) {
+		if err != nil {
+			fmt.Println("query persons failed, status code:", err)
 			return
 		}
+		defer func() {
+			_ = response.Body.Close()
+		}()
+		if response.StatusCode != http.StatusOK {
+			fmt.Println("query persons status is:", response.Status)
+		}
 		var quariedPersons []Person
+		body, _ := ioutil.ReadAll(response.Body)
 		err = json.Unmarshal(body, &quariedPersons)
 		if err != nil {
 			fmt.Println("unmarshal resonse as a person array failed:", err)
@@ -129,11 +139,11 @@ func queryPersons(url string) {
 
 func modifyPersonAge(url string, p Person, age int) {
 	p.Age = age
-	_, _, _ = New().Post(url).Body(p).Go()
+	_, _ = New().Post(url).Body(p).Go()
 }
 
 func removePerson(url string, p Person) {
-	_, _, _ = New().Delete(url).Body(p).Go()
+	_, _ = New().Delete(url).Body(p).Go()
 }
 
 var (
@@ -188,11 +198,13 @@ func ExampleTlsConfig() {
 		AddCertContent(testCertContent, testKeyContent).
 		Get(server.URL + url).
 		InsecureSkipVerify(true).
-		Do(func(response *http.Response, body []byte, err error) {
+		Do(func(response *http.Response, err error) {
 			if err != nil {
 				fmt.Println(err)
 			} else {
+				body, _ := ioutil.ReadAll(response.Body)
 				fmt.Println(string(body))
+				_ = response.Body.Close()
 			}
 		})
 
@@ -213,17 +225,21 @@ func ExampleQuery() {
 	})
 	c.AppendQuery("c", "hi")
 	c.AppendQuery("d", "you")
-	resp, body, err := c.GoStr()
+	resp, err := c.Go()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println(resp.Status)
 		return
 	}
 
-	queries := strings.Split(body, "&")
+	body, _ := ioutil.ReadAll(resp.Body)
+	queries := strings.Split(string(body), "&")
 	sort.Strings(queries)
 	for _, s := range queries {
 		fmt.Println(s)
