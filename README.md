@@ -1,5 +1,7 @@
 # A http client for rest request
 
+2023 6.7 archive it, recommanded to use https://github.com/carlmjohnson/requests
+
  `surport chainable usage`
 
 ## Examples
